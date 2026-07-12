@@ -1,0 +1,161 @@
+<!--
+  Custom Detection Rules - Home SOC Lab
+  Place this file at: /var/ossec/etc/rules/local_rules.xml on the Wazuh manager
+  Rule ID range 100000-100099 reserved for custom/local rules (Wazuh convention)
+  Every rule below is mapped to a MITRE ATT&CK technique ID for the detections-validated table.
+-->
+
+<group name="local,custom_detections,">
+
+  <!-- ============================================================
+       DETECTION 1: SSH Brute Force with Dynamic Thresholding
+       MITRE ATT&CK: T1110.001 (Brute Force: Password Guessing)
+       ============================================================ -->
+
+  <rule id="100010" level="5">
+    <if_sid>5710</if_sid> <!-- sshd: Attempt to login using a non-existent user -->
+    <same_source_ip />
+    <description>SSHD: Repeated non-existent user login attempts from same source</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+  <rule id="100011" level="10" frequency="6" timeframe="120">
+    <if_matched_sid>100010</if_matched_sid>
+    <same_source_ip />
+    <description>SSHD: Possible brute force attack - 6+ failed logins in 120s from single source</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>authentication_failures,pci_dss_11.4,gpg13_4.12,</group>
+  </rule>
+
+  <rule id="100012" level="12" frequency="10" timeframe="60">
+    <if_matched_sid>100010</if_matched_sid>
+    <same_source_ip />
+    <description>SSHD: HIGH CONFIDENCE brute force - 10+ failed logins in 60s. Likely automated attack.</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>authentication_failures,pci_dss_11.4,active_response_candidate,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       DETECTION 2: Suspicious PowerShell Execution
+       MITRE ATT&CK: T1059.001 (Command and Scripting Interpreter: PowerShell)
+       ============================================================ -->
+
+  <rule id="100020" level="8">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)-enc |-encodedcommand |EncodedCommand</field>
+    <description>PowerShell: Encoded/obfuscated command execution detected</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1027</id> <!-- Obfuscated Files or Information -->
+    </mitre>
+    <group>windows_powershell,suspicious_command,</group>
+  </rule>
+
+  <rule id="100021" level="9">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(New-Object\s+Net\.WebClient|Invoke-WebRequest|IEX\s*\(|DownloadString|DownloadFile)</field>
+    <description>PowerShell: Download cradle pattern detected (IEX/WebClient/DownloadString)</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1105</id> <!-- Ingress Tool Transfer -->
+    </mitre>
+    <group>windows_powershell,suspicious_command,active_response_candidate,</group>
+  </rule>
+
+  <rule id="100022" level="9">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)-nop\s+-w\s+hidden|-windowstyle\s+hidden|-exec\s+bypass</field>
+    <description>PowerShell: Hidden window / execution policy bypass flags detected</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1562.001</id> <!-- Impair Defenses: Disable or Modify Tools -->
+    </mitre>
+    <group>windows_powershell,defense_evasion,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       DETECTION 3: Privilege Escalation (Linux sudo abuse + new admin accounts)
+       MITRE ATT&CK: T1548.003 (Sudo and Sudo Caching), T1136 (Create Account)
+       ============================================================ -->
+
+  <rule id="100030" level="7">
+    <if_sid>5401</if_sid> <!-- successful sudo to ROOT executed -->
+    <field name="user">^(?!root)</field>
+    <time>18:00-06:00</time>
+    <description>Sudo: Off-hours root escalation by non-root user</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>privilege_escalation,pci_dss_10.2.2,</group>
+  </rule>
+
+  <rule id="100031" level="10" frequency="5" timeframe="300">
+    <if_sid>5401</if_sid>
+    <same_source_ip />
+    <description>Sudo: Abnormal frequency of sudo escalations (5+ in 5 min) - possible automated abuse</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>privilege_escalation,active_response_candidate,</group>
+  </rule>
+
+  <rule id="100032" level="10">
+    <if_sid>5901</if_sid> <!-- new user added -->
+    <field name="user.groups" type="pcre2">(?i)(sudo|wheel|admin|administrators)</field>
+    <description>Account Manipulation: New account created with administrative group membership</description>
+    <mitre>
+      <id>T1136.001</id> <!-- Create Account: Local Account -->
+      <id>T1098</id> <!-- Account Manipulation -->
+    </mitre>
+    <group>account_changed,pci_dss_10.2.5,active_response_candidate,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       DETECTION 4: Living-off-the-Land Binary (LOLBin) Abuse
+       MITRE ATT&CK: T1218 (System Binary Proxy Execution)
+       ============================================================ -->
+
+  <rule id="100040" level="9">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)certutil\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)-urlcache|-decode|-decodehex</field>
+    <description>LOLBin Abuse: certutil.exe used for encoding/decoding or URL cache (common download/exfil technique)</description>
+    <mitre>
+      <id>T1218.002</id> <!-- System Binary Proxy Execution: Control Panel -->
+      <id>T1140</id> <!-- Deobfuscate/Decode Files or Information -->
+    </mitre>
+    <group>lolbin,defense_evasion,active_response_candidate,</group>
+  </rule>
+
+  <rule id="100041" level="9">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)mshta\.exe$</field>
+    <description>LOLBin Abuse: mshta.exe execution detected - frequently used to run malicious HTA/JS/VBS payloads</description>
+    <mitre>
+      <id>T1218.005</id> <!-- System Binary Proxy Execution: Mshta -->
+    </mitre>
+    <group>lolbin,defense_evasion,active_response_candidate,</group>
+  </rule>
+
+  <rule id="100042" level="9">
+    <if_group>windows</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)rundll32\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)javascript:|\.dll,#|shell32\.dll</field>
+    <description>LOLBin Abuse: rundll32.exe executing suspicious script/DLL export pattern</description>
+    <mitre>
+      <id>T1218.011</id> <!-- System Binary Proxy Execution: Rundll32 -->
+    </mitre>
+    <group>lolbin,defense_evasion,active_response_candidate,</group>
+  </rule>
+
+</group>
