@@ -69,8 +69,8 @@ no cloud costs, no external dependencies beyond free-tier APIs.
 | 100010 / 100011 / 100012 | SSH brute force with dynamic thresholding (5/10+ failures escalate severity) | T1110.001 | ✅ Validated — real attack simulated, confirmed correct 3-tier severity escalation |
 | 100030 / 100031 | Sudo privilege escalation (single + repeated) | T1548.003 | ✅ Validated — real sudo escalation triggered, both rules fired correctly |
 | 100032 | New admin account creation | T1136.001, T1098 | ✅ Validated |
-| 100020–100022 | PowerShell abuse (encoded commands, download cradles, hidden window) | T1059.001, T1027, T1105, T1562.001 | 📝 Designed, not lab-validated (requires Windows VM, out of scope for this build) |
-| 100040–100042 | LOLBin abuse (certutil, mshta, rundll32) | T1218.002/.005/.011, T1140 | 📝 Designed, not lab-validated (Windows-only) |
+| 100020–100022 | PowerShell abuse (encoded commands, download cradles, hidden window) | T1059.001, T1027, T1105, T1562.001 | 📝 Designed, not lab-validated |
+| 100040–100042 | LOLBin abuse (certutil, mshta, rundll32) | T1218.002/.005/.011, T1140 | 📝 Designed, not lab-validated |
 
 See `atomic-tests/validation_mapping.md` for the full validation log with
 screenshots.
