@@ -149,30 +149,4 @@ home-soc-lab/
 └── README.md
 ```
 
-## Setup
 
-See `setup-guide/SETUP_GUIDE.md` for the complete step-by-step build process
-(VM creation, Wazuh install, agent connection, rule deployment).
-
-## Resume bullet (draft)
-
-> Built a self-hosted SOC lab (Wazuh) on Apple Silicon with custom
-> MITRE ATT&CK-mapped detection rules for SSH brute force and privilege
-> escalation; debugged and fixed real Wazuh rule-engine errors (invalid
-> correlation syntax, reserved field collisions, incorrect built-in rule ID
-> assumptions) by reading manager logs and cross-referencing live alert
-> data; validated every rule against live attack simulations with confirmed
-> multi-tier severity escalation; built a Python threat-intel enrichment
-> pipeline (AbuseIPDB/VirusTotal) tested against real API responses.
-
-## Next steps / stretch goals
-
-- Finish verifying rule 100032's field mapping against real "new user"
-  event data
-- Add a Windows VM to validate the PowerShell/LOLBin rule set
-- Add active response (auto-block source IP via `firewall-drop` when rule
-  100012/100031 fires) to demonstrate automated remediation, not just
-  detection
-- Rebuild the same detection logic using ELK + Sigma rules as a "v2" to
-  show the concepts are portable across SIEM platforms, not tied to one
-  vendor's syntax
